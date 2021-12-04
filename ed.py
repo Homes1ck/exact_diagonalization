@@ -517,3 +517,109 @@ class basis_1d(operater):
                                     
                                     H[ia, ib] += 0.5 * self.h_element(basis, 2, *[ia, ib, self.pblock, self.zblock, l, q, g])
             return H
+
+    def S_square(self, basis):
+
+        if type(self.kblock) != int:
+            rrep, nrep = basis
+            S_2 = lil_matrix(np.zeros((nrep, nrep)))
+            for a in range(nrep):
+                s = rrep[a]
+                S_2[a, a] += (self.Nup - self.L/2) ** 2 + self.L/2
+                for i in range(self.L):
+                    for j in range(i, self.L):
+                        if self.bit_test(s, i) != self.bit_test(s, j):
+                            s_prime = self.bit_filp(s, i, j)
+                            b = self.findstate(s_prime, rrep)
+                            S_2[a, b] += 1
+            return S_2
+
+        if type(self.kblock) == int and self.pblock == False and self.pblock == False: 
+            rrep, Rrep, nrep = basis
+            S_2 = lil_matrix(np.zeros((nrep, nrep))) + lil_matrix(1j * np.zeros((nrep, nrep)))
+            for a in range(nrep):
+                s = rrep[a]
+                S_2[a, a] += (self.Nup - self.L/2) ** 2 + self.L/2
+                for i in range(self.L):
+                    for j in range(i, self.L):
+                        if self.bit_test(s, i) != self.bit_test(s, j):
+                            s_prime = self.bit_filp(s, i, j)
+                            r, l = self.representation(s_prime, mode=1)[:2]
+                            b = self.findstate(r, rrep)
+                            if b >= 0:
+                                S_2[a, b] += np.sqrt(Rrep[a] / Rrep[b]) * np.exp(1j * self.k * l) 
+            if self.kblock == 0 or self.kblock == self.L // 2:
+                return np.real(S_2)
+            else:
+                return S_2
+
+        if type(self.kblock) == int and self.pblock and self.zblock == False:
+            rrep, Rrep, m_prep, nrep = basis
+            S_2 = lil_matrix(np.zeros((nrep, nrep)))
+            for a in range(nrep):
+                s = rrep[a]
+            
+                if a > 0 and s == rrep[a-1]:
+                    continue
+                elif a < nrep - 1 and s == rrep[a+1]:
+                    na = 2
+                else:
+                    na = 1
+                 
+                for ia in range(a, a + na):
+                    S_2[ia, ia] += (self.Nup - self.L/2) ** 2 + self.L/2
+
+                for i in range(self.L):
+                    for j in range(i, self.L):
+                        if self.bit_test(s, i) != self.bit_test(s, j):
+                                s_prime = self.bit_filp(s, i, j)
+                                r, l, q = self.representation(s_prime, mode=2)[:3]
+                                b = self.findstate(r, rrep)
+
+                                if b >= 0:
+                                    if b > 0 and rrep[b] == rrep[b-1]:
+                                        continue
+                                    elif b < nrep - 1 and rrep[b] == rrep[b+1]:
+                                        nb = 2
+                                    else:
+                                        nb = 1
+
+                                    for ia in range(a, a + na):
+                                        for ib in range(b, b + nb):
+                                            S_2[ia, ib] += self.h_element(basis, 1, *[ia, ib, self.pblock, l, q])
+            return S_2
+
+        if type(self.kblock) == int and self.pblock and self.zblock:
+            rrep, Rrep, m_prep, m_zrep, m_pzrep, nrep, case = basis
+            S_2 = lil_matrix(np.zeros((nrep, nrep)))
+            for a in range(nrep):
+                s = rrep[a]
+                
+                if a > 0 and s == rrep[a-1]:
+                    continue
+                elif a < nrep - 1 and s == rrep[a+1]:
+                    na = 2
+                else:
+                    na = 1
+    
+                for ia in range(a, a + na):
+                    S_2[ia, ia] += self.L/2
+
+                for i in range(self.L):
+                    for j in range(i, self.L):
+                        if self.bit_test(s, i) != self.bit_test(s, j):
+                            s_prime = self.bit_filp(s, i, j)
+                            r, l, q, g= self.representation(s_prime, mode=3)
+                            b = self.findstate(r, rrep)
+                            if b >= 0:
+                                if b > 0 and rrep[b] == rrep[b-1]:
+                                    continue
+                                elif b < nrep - 1 and rrep[b] == rrep[b+1]:
+                                    nb = 2
+                                else:
+                                    nb = 1
+
+                                for ia in range(a, a + na):
+                                    for ib in range(b, b + nb):                                        
+                                        S_2[ia, ib] += self.h_element(basis, 2, *[ia, ib, self.pblock, self.zblock, l, q, g])
+            return S_2
